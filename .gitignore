@@ -1,0 +1,111 @@
+# -------------------------------------------------------
+# Visual Studio
+# -------------------------------------------------------
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docview
+*.vcxproj.filters.bak
+ipch/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.opendb
+
+# Build intermediates & outputs
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+*.obj
+*.ilk
+*.pdb
+*.idb
+*.iobj
+*.ipdb
+*.tlog/
+*.log
+*.exp
+*.lib
+*.pch
+*.ipch
+*.recipe
+*.lastbuildstate
+*.FileListAbsolute.txt
+
+# Compiled executables (keep the ones in dlls/ tracked — they're vendor DLLs)
+*.exe
+*.pdb
+
+# -------------------------------------------------------
+# C / C++ generated
+# -------------------------------------------------------
+*.o
+*.a
+*.so
+*.dylib
+*.d
+
+# -------------------------------------------------------
+# DLLs copied to build output (originals in dlls/ are tracked)
+# -------------------------------------------------------
+src/shooter/x64/Debug/*.dll
+src/shooter/x64/Release/*.dll
+
+# -------------------------------------------------------
+# OpenGL / graphics toolchain
+# -------------------------------------------------------
+# Shader compilation caches (if any tool generates them)
+*.spv
+*.glslcache
+
+# -------------------------------------------------------
+# irrKlang / audio
+# -------------------------------------------------------
+# nothing extra needed
+
+# -------------------------------------------------------
+# Windows
+# -------------------------------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# -------------------------------------------------------
+# Editor & IDE extras
+# -------------------------------------------------------
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/c_cpp_properties.json
+*.code-workspace
+.idea/
+*.swp
+*.swo
+*~
+
+# -------------------------------------------------------
+# Claude Code local settings (project-level)
+# -------------------------------------------------------
+.claude/settings.local.json
+src/shooter/.claude/settings.local.json
+
+# -------------------------------------------------------
+# OS / misc
+# -------------------------------------------------------
+*.DS_Store
+*.bak
+*.tmp
+*.temp
