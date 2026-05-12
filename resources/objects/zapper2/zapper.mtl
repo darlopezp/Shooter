@@ -1,0 +1,72 @@
+# Blender 5.1.1 MTL File: 'None'
+# www.blender.org
+
+newmtl Material.001
+Ns 800.553955
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd zapper1_Material.004_AlbedoTransparency.png
+
+newmtl Material.002
+Ns 0.000000
+Ka 0.427632 0.427632 0.427632
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 3
+map_Kd zapper1_Material.001_AlbedoTransparency.png
+
+newmtl Material.003
+Ns 20.948767
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd zapper1_Material.002_AlbedoTransparency.png
+
+newmtl Material.004
+Ns 21.024996
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd zapper1_Material.003_AlbedoTransparency.png
+
+newmtl Material.005
+Ns 801.024963
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd zapper1_Material.007_AlbedoTransparency.png
+
+newmtl Material.006
+Ns 801.024963
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd zapper1_Material.007_AlbedoTransparency.png
+
+newmtl Material.007
+Ns 801.024963
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd zapper1_Material_AlbedoTransparency.png
