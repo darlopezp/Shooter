@@ -82,6 +82,14 @@ struct Cubo {
     AABB      hitbox;
 };
 
+// -------- struct árbol --------
+struct Arbol {
+    glm::vec3 position;
+    float     rotationY;  // rotación en grados sobre el eje Y
+    glm::vec3 scale;
+    AABB      hitbox;
+};
+
 AABB calcularHitbox(glm::vec3 pos, glm::vec3 scale) {
     return { pos - scale * 0.5f, pos + scale * 0.5f };
 }
@@ -101,7 +109,8 @@ bool colisiona(glm::vec3 playerPos, AABB box) {
     return overlapXZ && overlapY;
 }
 
-std::vector<Cubo> cubosEscenario;
+std::vector<Cubo>  cubosEscenario;
+std::vector<Arbol> arboles;          // ← vector global de árboles
 
 // -------- struct instancias de modelos --------
 struct ModelInstance {
@@ -155,7 +164,6 @@ static void poll_server_state() {
         int n = recv(g_sockfd, (char*)&hdr, sizeof(hdr), MSG_PEEK);
 
         if (n == 0) {
-            // Cierre gracioso del servidor
             std::cerr << "Servidor desconectado\n";
             g_match_ended = true;
             return;
@@ -168,22 +176,19 @@ static void poll_server_state() {
             }
             return;
         }
-        if (n < (int)sizeof(hdr)) return; // header parcial, volver luego
+        if (n < (int)sizeof(hdr)) return;
 
-        // Validar payload_len antes de asignar memoria
         if (hdr.payload_len < 0 || hdr.payload_len > 65536) {
             std::cerr << "payload_len inválido: " << hdr.payload_len << "\n";
             g_match_ended = true;
             return;
         }
 
-        // Verificar que el mensaje completo (header + payload) ya llegó
         int total = (int)sizeof(MsgHeader) + hdr.payload_len;
         std::vector<char> peek_buf(total);
         int m = recv(g_sockfd, peek_buf.data(), total, MSG_PEEK);
-        if (m < total) return; // payload aún incompleto, volver luego
+        if (m < total) return;
 
-        // Consumir el header del buffer
         recv_all_blocking(g_sockfd, &hdr, sizeof(hdr));
 
         if (hdr.type == MSG_STATE && hdr.payload_len == (int)sizeof(GameState)) {
@@ -194,7 +199,6 @@ static void poll_server_state() {
             }
             if (g_lamport < tmp.lamport_ts) g_lamport = tmp.lamport_ts;
 
-            // Preservar mi propia posición (autoridad local sobre mi cámara)
             tmp.players[g_my_id].x = camera.Position.x;
             tmp.players[g_my_id].y = camera.Position.y;
             tmp.players[g_my_id].z = camera.Position.z;
@@ -205,7 +209,6 @@ static void poll_server_state() {
             if (g_gs.winner >= 0) g_match_ended = true;
         }
         else {
-            // Descartar payload desconocido (tamaño ya validado arriba)
             std::vector<char> trash(hdr.payload_len);
             recv_all_blocking(g_sockfd, trash.data(), hdr.payload_len);
         }
@@ -268,7 +271,6 @@ static bool connect_to_server(const char* host, int port) {
     int nodelay = 1;
     setsockopt(g_sockfd, IPPROTO_TCP, TCP_NODELAY, (const char*)&nodelay, sizeof(nodelay));
 
-    // Recibir id asignado por servidor (bloqueante)
     if (recv_all_blocking(g_sockfd, &g_my_id, sizeof(int)) < 0) {
         std::cerr << "No se recibió ID del servidor\n";
         return false;
@@ -276,12 +278,9 @@ static bool connect_to_server(const char* host, int port) {
     std::cout << "Conectado como Jugador " << g_my_id
         << ". Esperando al otro jugador...\n";
 
-    // Poner el socket en no-bloqueante para el game loop
-// Poner el socket en no-bloqueante
     u_long mode = 1;
     ioctlsocket(g_sockfd, FIONBIO, &mode);
 
-    // Inicializar estado local
     std::memset(&g_gs, 0, sizeof(g_gs));
     g_gs.winner = -1;
     g_gs.players[0].hp = MAX_HP; g_gs.players[0].alive = 1;
@@ -297,12 +296,11 @@ int main(int argc, char* argv[]) {
         std::cerr << "Fallo al inicializar Winsock" << std::endl;
         return -1;
     }
-    const char* host = (argc > 1) ? argv[1] : "10.135.28.135";
+    const char* host = (argc > 1) ? argv[1] : "172.20.188.99";
     int         port = (argc > 2) ? atoi(argv[2]) : 9090;
 
     if (!connect_to_server(host, port)) return 1;
 
-    // Posición inicial según id (coincide con el servidor)
     if (g_my_id == 0) {
         camera.Position = glm::vec3(-10.0f, ALTURA_BASE, 0.0f);
         camera.Yaw = 0.0f;
@@ -312,9 +310,6 @@ int main(int argc, char* argv[]) {
         camera.Yaw = 180.0f;
     }
     camera.Pitch = 0.0f;
-    // Recalcular vectores internos de la cámara con el nuevo Yaw/Pitch
-    // (la clase Camera de learnopengl recalcula en cada ProcessMouseMovement,
-    //  pero podemos forzar un cálculo inicial moviendo 0,0)
     camera.ProcessMouseMovement(0.0f, 0.0f);
 
     glfwInit();
@@ -353,21 +348,67 @@ int main(int argc, char* argv[]) {
     Shader sunShader("sun.vs", "sun.fs");
 
     // -------- Modelos --------
-    Model zapperModel("../../resources/objects/zapper2/zapper.obj");
+    Model zapperModel("../../../resources/objects/zapper2/zapper.obj");
+    Model arbolModel("../../../resources/objects/arbol/tree.obj");
 
-    std::vector<ModelInstance> zapperInstances = {
-        { glm::vec3(0.0f, 0.0f,  0.0f),   0.0f, glm::vec3(0,1,0), glm::vec3(1.0f) },
-        { glm::vec3(3.0f, 0.0f, -2.0f),  45.0f, glm::vec3(0,1,0), glm::vec3(0.8f) },
-        { glm::vec3(-3.0f, 0.0f,  1.0f), -30.0f, glm::vec3(0,1,0), glm::vec3(1.2f) },
-    };
+    std::vector<ModelInstance> zapperInstances = {};
 
     // -------- Cubos del escenario --------
-    cubosEscenario = {
-        { glm::vec3(5.0f, 0.5f,  0.0f), glm::vec3(1.0f, 1.0f, 1.0f) },
-        { glm::vec3(-4.0f, 0.5f,  3.0f), glm::vec3(2.0f, 1.0f, 2.0f) },
-    };
+    cubosEscenario = {};
     for (auto& cubo : cubosEscenario)
         cubo.hitbox = calcularHitbox(cubo.position, cubo.scale);
+
+    // ======================================================
+    // -------- Árboles — EDITA AQUÍ para agregar más -------
+    // Formato: { posición(X,Y,Z), rotaciónY°, escala(X,Y,Z) }
+    // El hitbox cubre solo el tronco: ajusta glm::vec3(0.4f, 2.0f, 0.4f)
+    // si tu modelo es más gordo/alto.
+    // ======================================================
+    arboles = {
+        // Zona norte
+        { glm::vec3(-13.0f, 0.0f, -14.0f),  37.0f, glm::vec3(1.1f), {} },
+        { glm::vec3(-8.5f,  0.0f, -11.0f), 112.0f, glm::vec3(0.9f), {} },
+        { glm::vec3(-15.0f, 0.0f,  -7.0f), 255.0f, glm::vec3(1.3f), {} },
+        { glm::vec3(6.0f,  0.0f, -13.0f),  83.0f, glm::vec3(1.0f), {} },
+        { glm::vec3(11.0f, 0.0f,  -9.0f), 194.0f, glm::vec3(0.85f),{} },
+        { glm::vec3(14.0f, 0.0f, -15.0f),  21.0f, glm::vec3(1.2f), {} },
+
+        // Zona sur
+        { glm::vec3(-12.0f, 0.0f,  10.0f), 310.0f, glm::vec3(1.0f), {} },
+        { glm::vec3(-7.0f, 0.0f,  14.0f),  66.0f, glm::vec3(1.15f),{} },
+        { glm::vec3(-16.0f, 0.0f,  16.0f), 142.0f, glm::vec3(0.95f),{} },
+        { glm::vec3(5.0f, 0.0f,  12.0f), 229.0f, glm::vec3(1.05f),{} },
+        { glm::vec3(13.0f, 0.0f,   8.0f),  55.0f, glm::vec3(1.3f), {} },
+        { glm::vec3(16.0f, 0.0f,  15.0f), 178.0f, glm::vec3(0.8f), {} },
+
+        // Zona oeste
+        { glm::vec3(-17.0f, 0.0f,  -2.0f),  90.0f, glm::vec3(1.2f), {} },
+        { glm::vec3(-14.0f, 0.0f,   3.0f), 333.0f, glm::vec3(0.9f), {} },
+        { glm::vec3(-19.0f, 0.0f,   7.0f),  17.0f, glm::vec3(1.1f), {} },
+
+        // Zona este
+        { glm::vec3(17.0f, 0.0f,   1.0f), 205.0f, glm::vec3(1.0f), {} },
+        { glm::vec3(15.0f, 0.0f,  -4.0f),  73.0f, glm::vec3(1.25f),{} },
+        { glm::vec3(19.0f, 0.0f,  -9.0f), 158.0f, glm::vec3(0.88f),{} },
+
+        // Árboles dispersos intermedios
+        { glm::vec3(-9.0f, 0.0f,   6.0f), 280.0f, glm::vec3(1.05f),{} },
+        { glm::vec3(8.0f, 0.0f,  -6.0f),  44.0f, glm::vec3(0.92f),{} },
+        { glm::vec3(-5.0f, 0.0f, -10.0f), 317.0f, glm::vec3(1.1f), {} },
+        { glm::vec3(10.0f, 0.0f,   5.0f), 101.0f, glm::vec3(0.95f),{} },
+
+        // Árboles centrales
+		{ glm::vec3(0.0f, 0.0f, 0.0f), 45.0f, glm::vec3(1.3f), {} },
+        { glm::vec3(-4.0f, 0.0f, 2.0f), 120.0f, glm::vec3(1.2f), {} },
+        { glm::vec3(5.0f, 0.0f, -3.0f), 200.0f, glm::vec3(1.15f),{} },
+    };
+
+    // Calcula la hitbox de cada árbol (tronco escalado)
+    for (auto& a : arboles) {
+        glm::vec3 trunkHalf = glm::vec3(0.4f, 2.0f, 0.4f) * a.scale;
+        a.hitbox.min = a.position - trunkHalf;
+        a.hitbox.max = a.position + trunkHalf;
+    }
 
     // -------- Plano --------
     unsigned int planeVAO = createPlane();
@@ -382,7 +423,7 @@ int main(int argc, char* argv[]) {
 
     int texWidth, texHeight, texChannels;
     unsigned char* data = stbi_load(
-        "../../resources/textures/pasto2.png",
+        "../../../resources/textures/pasto2.png",
         &texWidth, &texHeight, &texChannels, 0
     );
     if (data) {
@@ -396,12 +437,10 @@ int main(int argc, char* argv[]) {
     }
     stbi_image_free(data);
 
-    // VAO del cubo (sol + cubos escenario + balas)
     unsigned int cubeVAO = createCube();
 
-    // -------- contadores de tick de red --------
-    int  net_tick = 0;   // para limitar frecuencia de MoveMsg
-    int  hb_tick = 0;   // para heartbeat
+    int  net_tick = 0;
+    int  hb_tick = 0;
     bool prev_mouse = false;
 
     // -------- Render loop --------
@@ -410,10 +449,8 @@ int main(int argc, char* argv[]) {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        // 1) Poll del servidor (solo mientras la partida esté activa)
         if (!g_match_ended) poll_server_state();
 
-        // 2) Si la partida terminó, mostramos un par de segundos y salimos
         if (g_match_ended) {
             char endTitle[128];
             if (g_gs.winner == g_my_id)
@@ -425,10 +462,8 @@ int main(int argc, char* argv[]) {
             glfwSetWindowTitle(window, endTitle);
         }
 
-        // 3) Input local (incluye movimiento, salto, disparo)
         processInput(window);
 
-        // 4) Detectar click de disparo y enviar ShootMsg
         bool mouse_now = (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
         if (mouse_now && !prev_mouse && !g_match_ended) {
             glm::vec3 origen = camera.Position + camera.Front * 1.0f;
@@ -437,19 +472,16 @@ int main(int argc, char* argv[]) {
         }
         prev_mouse = mouse_now;
 
-        // 5) Mandar MoveMsg ~30 Hz (cada 2 frames a 60 fps)
         if (!g_match_ended && ++net_tick >= 2) {
             net_tick = 0;
             send_move_update();
         }
 
-        // 6) Heartbeat cada ~1 s
         if (++hb_tick >= 60) {
             hb_tick = 0;
             if (!g_match_ended) send_heartbeat();
         }
 
-        // 7) Actualizar título con HP
         if (!g_match_ended) {
             char hudTitle[160];
             int other = 1 - g_my_id;
@@ -472,7 +504,6 @@ int main(int argc, char* argv[]) {
         );
         glm::mat4 view = camera.GetViewMatrix();
 
-        // Uniforms de luz
         ourShader.use();
 
         glm::vec3 sunDirection = glm::normalize(glm::vec3(0.0f) - SUN_POSITION);
@@ -510,14 +541,22 @@ int main(int argc, char* argv[]) {
             zapperModel.Draw(ourShader);
         }
 
+        // -------- Árboles --------
+        for (const auto& a : arboles) {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, a.position);
+            model = glm::rotate(model, glm::radians(a.rotationY), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::scale(model, a.scale);
+            ourShader.setMat4("model", model);
+            arbolModel.Draw(ourShader);
+        }
+
         // -------- Oponente: zapper en su posición/orientación --------
         int other = 1 - g_my_id;
         const PlayerState& op = g_gs.players[other];
         if (op.alive) {
             glm::mat4 m = glm::mat4(1.0f);
-            // Posicionar a los pies del jugador (camera.y - ALTURA_BASE = suelo)
             m = glm::translate(m, glm::vec3(op.x, op.y - ALTURA_BASE, op.z));
-            // Yaw del jugador -> rotar el modelo
             m = glm::rotate(m, glm::radians(-op.yaw + 90.0f), glm::vec3(0, 1, 0));
             m = glm::scale(m, glm::vec3(0.5f));
             ourShader.setMat4("model", m);
@@ -552,7 +591,6 @@ int main(int argc, char* argv[]) {
         sunShader.setMat4("projection", projection);
         sunShader.setMat4("view", view);
 
-        // Sol
         sunShader.setVec3("uColor", glm::vec3(1.0f, 0.95f, 0.3f));
         glm::mat4 sunModel = glm::mat4(1.0f);
         sunModel = glm::translate(sunModel, SUN_POSITION);
@@ -561,7 +599,6 @@ int main(int argc, char* argv[]) {
         glBindVertexArray(cubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        // Cubos escenario
         sunShader.setVec3("uColor", glm::vec3(0.6f, 0.6f, 0.6f));
         for (const auto& cubo : cubosEscenario) {
             glm::mat4 cuboModel = glm::mat4(1.0f);
@@ -571,7 +608,6 @@ int main(int argc, char* argv[]) {
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 
-        // Balas (cubitos rojo/naranjas)
         sunShader.setVec3("uColor", glm::vec3(1.0f, 0.35f, 0.1f));
         for (int i = 0; i < MAX_BULLETS; i++) {
             if (!g_gs.bullets[i].active) continue;
@@ -604,7 +640,6 @@ int main(int argc, char* argv[]) {
         glfwSwapBuffers(window);
         glfwPollEvents();
 
-        // Si la partida terminó, esperar 3 segundos y cerrar
         if (g_match_ended) {
             static float endTimer = 0.0f;
             endTimer += deltaTime;
@@ -694,7 +729,6 @@ void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    // Si estoy muerto, congelar control de movimiento
     if (!g_gs.players[g_my_id].alive) return;
 
     glm::vec3 posAnterior = camera.Position;
@@ -713,7 +747,6 @@ void processInput(GLFWwindow* window) {
     else
         run = 1.1f;
 
-    // Clamp a los límites del mundo (para que coincida con el servidor)
     if (camera.Position.x < WORLD_MIN_X) camera.Position.x = WORLD_MIN_X;
     if (camera.Position.x > WORLD_MAX_X) camera.Position.x = WORLD_MAX_X;
     if (camera.Position.z < WORLD_MIN_Z) camera.Position.z = WORLD_MIN_Z;
@@ -728,6 +761,22 @@ void processInput(GLFWwindow* window) {
             else {
                 glm::vec3 soloZ = { posAnterior.x, posAnterior.y, camera.Position.z };
                 if (!colisiona(soloZ, cubo.hitbox))
+                    camera.Position = soloZ;
+                else
+                    camera.Position = posAnterior;
+            }
+        }
+    }
+
+    // Colisiones horizontales con árboles
+    for (const auto& a : arboles) {
+        if (colisiona(camera.Position, a.hitbox)) {
+            glm::vec3 soloX = { camera.Position.x, posAnterior.y, posAnterior.z };
+            if (!colisiona(soloX, a.hitbox))
+                camera.Position = soloX;
+            else {
+                glm::vec3 soloZ = { posAnterior.x, posAnterior.y, camera.Position.z };
+                if (!colisiona(soloZ, a.hitbox))
                     camera.Position = soloZ;
                 else
                     camera.Position = posAnterior;
@@ -757,6 +806,20 @@ void processInput(GLFWwindow* window) {
         }
     }
 
+    // Superficie de los árboles (por si escala hace que tengan techo)
+    for (const auto& a : arboles) {
+        bool dentroXZ =
+            camera.Position.x + radio > a.hitbox.min.x &&
+            camera.Position.x - radio < a.hitbox.max.x &&
+            camera.Position.z + radio > a.hitbox.min.z &&
+            camera.Position.z - radio < a.hitbox.max.z;
+
+        if (dentroXZ) {
+            float superficieArbol = a.hitbox.max.y + ALTURA_BASE;
+            if (superficieArbol > suelo) suelo = superficieArbol;
+        }
+    }
+
     if (!estaSaltando && camera.Position.y > suelo + 0.01f) {
         estaSaltando = true;
         velocidadVertical = 0.0f;
@@ -775,7 +838,7 @@ void processInput(GLFWwindow* window) {
         camera.Position.y = suelo;
     }
 
-    // Disparo (efecto visual local — el envío real al servidor se hace en main)
+    // Disparo (efecto visual local)
     static bool mouseWasPressed = false;
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !mouseWasPressed) {
         disparando = true;
