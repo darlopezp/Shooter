@@ -624,8 +624,8 @@ int main(int argc, char* argv[]) {
         if (op.alive) {
             sunShader.setVec3("uColor", glm::vec3(0.2f, 0.9f, 0.2f));
             glm::mat4 pm = glm::mat4(1.0f);
-            pm = glm::translate(pm, glm::vec3(op.x, op.y, op.z));
-            pm = glm::scale(pm, glm::vec3(1.2f));
+            pm = glm::translate(pm, glm::vec3(op.x, 1.0f, op.z));
+            pm = glm::scale(pm, glm::vec3(1.2f, 2.0f, 1.2f));
             sunShader.setMat4("model", pm);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
