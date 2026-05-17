@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="shooter.vcxproj" />
+  <Project Path="shooter.vcxproj" Id="3df2367a-5f18-4d2f-acc0-5efa97a3e35b" />
 </Solution>

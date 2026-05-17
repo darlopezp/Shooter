@@ -296,7 +296,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "Fallo al inicializar Winsock" << std::endl;
         return -1;
     }
-    const char* host = (argc > 1) ? argv[1] : "172.20.188.99";
+    const char* host = (argc > 1) ? argv[1] : "56.124.77.160";
     int         port = (argc > 2) ? atoi(argv[2]) : 9090;
 
     if (!connect_to_server(host, port)) return 1;
@@ -348,8 +348,8 @@ int main(int argc, char* argv[]) {
     Shader sunShader("sun.vs", "sun.fs");
 
     // -------- Modelos --------
-    Model zapperModel("../../../resources/objects/zapper2/zapper.obj");
-    Model arbolModel("../../../resources/objects/arbol/tree.obj");
+    Model zapperModel("../../resources/objects/zapper2/zapper.obj");
+    Model arbolModel("../../resources/objects/arbol/tree.obj");
 
     std::vector<ModelInstance> zapperInstances = {};
 
@@ -423,7 +423,7 @@ int main(int argc, char* argv[]) {
 
     int texWidth, texHeight, texChannels;
     unsigned char* data = stbi_load(
-        "../../../resources/textures/pasto2.png",
+        "../../resources/textures/pasto2.png",
         &texWidth, &texHeight, &texChannels, 0
     );
     if (data) {
@@ -617,6 +617,16 @@ int main(int argc, char* argv[]) {
                 g_gs.bullets[i].z));
             bm = glm::scale(bm, glm::vec3(0.15f));
             sunShader.setMat4("model", bm);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+
+        // Cubo del oponente (hitbox visual)
+        if (op.alive) {
+            sunShader.setVec3("uColor", glm::vec3(0.2f, 0.9f, 0.2f));
+            glm::mat4 pm = glm::mat4(1.0f);
+            pm = glm::translate(pm, glm::vec3(op.x, op.y, op.z));
+            pm = glm::scale(pm, glm::vec3(1.2f));
+            sunShader.setMat4("model", pm);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
         glBindVertexArray(0);
