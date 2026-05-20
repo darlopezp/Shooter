@@ -110,7 +110,7 @@ bool colisiona(glm::vec3 playerPos, AABB box) {
 }
 
 std::vector<Cubo>  cubosEscenario;
-std::vector<Arbol> arboles;          // ← vector global de árboles
+std::vector<Arbol> arboles;
 
 // -------- struct instancias de modelos --------
 struct ModelInstance {
@@ -358,12 +358,7 @@ int main(int argc, char* argv[]) {
     for (auto& cubo : cubosEscenario)
         cubo.hitbox = calcularHitbox(cubo.position, cubo.scale);
 
-    // ======================================================
-    // -------- Árboles — EDITA AQUÍ para agregar más -------
-    // Formato: { posición(X,Y,Z), rotaciónY°, escala(X,Y,Z) }
-    // El hitbox cubre solo el tronco: ajusta glm::vec3(0.4f, 2.0f, 0.4f)
-    // si tu modelo es más gordo/alto.
-    // ======================================================
+    // -------- Vector de arboles -------
     arboles = {
         // Zona norte
         { glm::vec3(-13.0f, 0.0f, -14.0f),  37.0f, glm::vec3(1.1f), {} },
